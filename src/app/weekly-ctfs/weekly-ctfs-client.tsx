@@ -1,29 +1,130 @@
 "use client";
 
-import { ScrambleText } from "../_components/scramble-text";
+import Link from "next/link";
 import { Header, Footer } from "../_components/site-chrome";
+import type { CtfDashboard } from "../../lib/ctf";
+import { WeekHero } from "./_components/week-hero";
+import { ChallengeGrid } from "./_components/challenge-grid";
+import { UserStatsPanel } from "./_components/user-stats-panel";
+import { SignInForm } from "./_components/sign-in-form";
 
-export default function WeeklyCtfsClient() {
+/* ------------------------------------------------------------------ */
+/*  Main dashboard shell                                               */
+/* ------------------------------------------------------------------ */
+
+export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
+  const { week, challenges, viewer, configured } = data;
+
   return (
     <>
       <Header current="Weekly CTFs" />
 
-      <main className="flex-1 grid place-items-center">
-        <section className="wrap py-20 md:py-28 text-center">
-          <p className="kicker mb-6">{"// ~/weekly-ctfs"}</p>
+      <main className="flex-1 route-transition">
+        {/* ── Page header ── */}
+        <section className="wrap pt-10 pb-6 md:pt-14 md:pb-8">
+          <div className="rule mb-8" />
 
-          <h1 className="font-mono font-bold uppercase tracking-[0.18em] text-accent glow leading-none break-words text-[clamp(2rem,9vw,5rem)]">
-            <ScrambleText text="COMING SOON" />
-          </h1>
+          {!configured && (
+            <div className="mb-6 border border-border bg-bg-3 px-4 py-3 text-xs text-fg-faint">
+              <span className="text-accent">!</span> Demo mode — Supabase is
+              not configured. Showing sample data. Flag submissions are
+              disabled.
+            </div>
+          )}
 
-          <p className="mt-8 text-sm md:text-base text-fg-dim max-w-md mx-auto">
-            The weekly schedule and live scoreboard page are still being
-            built. Sessions run every week regardless — bring a laptop.
-          </p>
+          {week ? (
+            <WeekHero week={week} />
+          ) : (
+            <NoActiveWeek />
+          )}
         </section>
+
+        {week && (
+          <section className="wrap pb-16">
+            {/* ── Two-column layout on large screens ── */}
+            <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
+
+              {/* ── Left: challenges ── */}
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-3">
+                  <p className="kicker">{"// challenges"}</p>
+                  <span className="text-[0.68rem] text-fg-faint">
+                    {challenges.filter((c) => c.solved).length}/{challenges.length} solved
+                  </span>
+                </div>
+                <ChallengeGrid challenges={challenges} />
+              </div>
+
+              {/* ── Right: sidebar ── */}
+              <aside className="flex flex-col gap-4">
+                {/* User stats or sign-in CTA */}
+                {viewer ? (
+                  <UserStatsPanel viewer={viewer} challenges={challenges} />
+                ) : (
+                  <>
+                    <UserStatsPanel viewer={null} challenges={challenges} />
+                    <SignInForm />
+                  </>
+                )}
+
+                {/* Leaderboard navigation */}
+                <div className="panel p-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="kicker text-[0.65rem]">{"// leaderboard"}</p>
+                    {configured && (
+                      <span className="text-[0.65rem] text-fg-faint">
+                        live
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-fg-dim leading-relaxed">
+                    See how you stack up against other competitors this week.
+                  </p>
+                  <Link
+                    href="/weekly-ctfs/leaderboard"
+                    id="dashboard-leaderboard-btn"
+                    className="btn self-start text-xs"
+                    aria-label="View full leaderboard"
+                  >
+                    &gt; view_leaderboard
+                  </Link>
+                </div>
+              </aside>
+
+            </div>
+          </section>
+        )}
       </main>
 
       <Footer current="Weekly CTFs" />
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  No active week state                                               */
+/* ------------------------------------------------------------------ */
+
+function NoActiveWeek() {
+  return (
+    <div className="flex flex-col gap-4 py-10">
+      <p className="kicker">{"// no active week"}</p>
+      <h1 className="font-display font-bold text-[clamp(1.5rem,4vw,2.5rem)] text-fg">
+        No CTF Running
+      </h1>
+      <p className="text-sm text-fg-dim max-w-md">
+        There is no active CTF week right now. Sessions run weekly — check
+        back soon or follow Layer8 on{" "}
+        <a
+          href="https://www.instagram.com/layer8.pesu/"
+          target="_blank"
+          rel="noreferrer"
+          className="text-accent hover:underline"
+        >
+          Instagram
+        </a>{" "}
+        for announcements.
+      </p>
+    </div>
   );
 }
