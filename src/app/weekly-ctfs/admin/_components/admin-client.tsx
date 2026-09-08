@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   CtfAdminChallenge,
   CtfAdminWeek,
@@ -8,15 +8,14 @@ import type {
 import {
   deleteChallenge,
   deleteWeek,
-  updateChallenge,
-  updateWeek,
+  setChallengePublished,
+  setWeekPublished,
 } from "../actions";
 import AttachmentManager from "./attachment-manager";
 import ChallengeForm from "./challenge-form";
 import DangerButton from "./danger-button";
 import PublishToggle from "./publish-toggle";
 import WeekForm from "./week-form";
-import { isoToIstLocal } from "./form-kit";
 
 const WINDOW_FORMAT: Intl.DateTimeFormatOptions = {
   day: "2-digit",
@@ -37,7 +36,9 @@ function formatWindow(startsAt: string, endsAt: string) {
 
 type WeekPhase = "live" | "upcoming" | "closed";
 
-function weekPhase(week: CtfAdminWeek, at = Date.now()): WeekPhase {
+// `at` is always passed in — never read the clock during render, or the
+// server and first client paint can disagree and trip a hydration warning.
+function weekPhase(week: CtfAdminWeek, at: number): WeekPhase {
   const start = new Date(week.startsAt).getTime();
   const end = new Date(week.endsAt).getTime();
   if (at < start) return "upcoming";
@@ -71,50 +72,33 @@ function PhasePill({ phase, published }: { phase: WeekPhase; published: boolean 
   );
 }
 
-// ---- category + difficulty coding -------------------------------------------
+// ---- category + difficulty labels ------------------------------------------
+// DESIGN.md allows one accent (blue) plus the text tokens — no per-type
+// colour coding, so these are plain bordered / dimmed labels.
 
-const CATEGORY_HUE: Record<string, number> = {
-  web: 210,
-  pwn: 2,
-  rev: 275,
-  crypto: 45,
-  forensics: 158,
-  stego: 322,
-  osint: 190,
-  net: 104,
-  misc: 235,
-};
+const CATEGORY_OPTIONS = [
+  "web",
+  "pwn",
+  "rev",
+  "crypto",
+  "forensics",
+  "stego",
+  "osint",
+  "net",
+  "misc",
+];
 
 function CategoryChip({ category }: { category: string }) {
-  const hue = CATEGORY_HUE[category] ?? 235;
   return (
-    <span
-      className="border px-1.5 py-0.5 text-[0.64rem] font-normal uppercase tracking-[0.14em]"
-      style={{
-        borderColor: `hsl(${hue} 68% 58% / 0.45)`,
-        color: `hsl(${hue} 70% 74%)`,
-        background: `hsl(${hue} 68% 58% / 0.08)`,
-      }}
-    >
+    <span className="border border-border px-1.5 py-0.5 text-[0.64rem] font-normal uppercase tracking-[0.14em] text-fg-dim">
       {category}
     </span>
   );
 }
 
-const DIFFICULTY_DOT: Record<string, string> = {
-  beginner: "hsl(150 58% 58%)",
-  easy: "hsl(200 72% 62%)",
-  medium: "hsl(40 82% 60%)",
-  hard: "hsl(2 76% 66%)",
-};
-
 function DifficultyBadge({ value }: { value: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[0.66rem] uppercase tracking-[0.14em] text-fg-faint">
-      <span
-        className="size-2 rounded-full"
-        style={{ background: DIFFICULTY_DOT[value] ?? "var(--fg-faint)" }}
-      />
+    <span className="text-[0.66rem] uppercase tracking-[0.14em] text-fg-faint">
       {value}
     </span>
   );
@@ -149,11 +133,16 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 function StatTiles({
   weeks,
   challenges,
+  now,
 }: {
   weeks: CtfAdminWeek[];
   challenges: CtfAdminChallenge[];
+  now: number;
 }) {
-  const live = weeks.filter((w) => weekPhase(w) === "live").length;
+  // "live now" = published operations whose window is currently open.
+  const live = weeks.filter(
+    (w) => w.published && weekPhase(w, now) === "live",
+  ).length;
   const publishedChallenges = challenges.filter((c) => c.published).length;
   const drafts = challenges.length - publishedChallenges;
   const pointPool = challenges
@@ -193,7 +182,6 @@ function StatTiles({
 
 type StatusFilter = "all" | "published" | "draft";
 
-const CATEGORY_OPTIONS = Object.keys(CATEGORY_HUE);
 const FIELD_SM =
   "min-w-0 border border-border bg-bg-3 px-2.5 py-1.5 font-mono text-[0.8rem] text-fg outline-none focus:border-accent";
 
@@ -287,31 +275,6 @@ function challengeMatches(
   return true;
 }
 
-function weekFields(week: CtfAdminWeek): Record<string, string> {
-  return {
-    weekId: week.id,
-    title: week.title,
-    summary: week.summary,
-    sequenceNo: String(week.sequenceNo),
-    startsAt: isoToIstLocal(week.startsAt),
-    endsAt: isoToIstLocal(week.endsAt),
-  };
-}
-
-function challengeFields(challenge: CtfAdminChallenge): Record<string, string> {
-  return {
-    challengeId: challenge.id,
-    weekId: challenge.weekId,
-    title: challenge.title,
-    category: challenge.category,
-    difficulty: challenge.difficulty,
-    points: String(challenge.points),
-    summary: challenge.summary,
-    description: challenge.description,
-    connectionInfo: challenge.connectionInfo ?? "",
-  };
-}
-
 const SECTION_HEAD =
   "font-display text-[1.25rem] font-bold text-fg md:text-[1.5rem]";
 const PANEL_INNER = "border border-border bg-bg-2 p-4 md:p-5";
@@ -320,15 +283,27 @@ export default function AdminClient({
   role,
   weeks,
   challenges,
+  now: nowFromServer,
 }: {
   role: "host" | "admin";
   weeks: CtfAdminWeek[];
   challenges: CtfAdminChallenge[];
+  now: number;
 }) {
   const [newWeekOpen, setNewWeekOpen] = useState(false);
   const [editingWeek, setEditingWeek] = useState<string | null>(null);
   const [newChallengeFor, setNewChallengeFor] = useState<string | null>(null);
   const [editingChallenge, setEditingChallenge] = useState<string | null>(null);
+
+  // Seed from the server-supplied timestamp so the first client render matches
+  // the server HTML, then move to the real clock after mount and keep it fresh.
+  const [now, setNow] = useState(nowFromServer);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -386,7 +361,7 @@ export default function AdminClient({
         </div>
       </div>
 
-      <StatTiles weeks={weeks} challenges={challenges} />
+      <StatTiles weeks={weeks} challenges={challenges} now={now} />
 
       {/* ---- operations ---- */}
       <section className="flex flex-col gap-4">
@@ -456,17 +431,18 @@ export default function AdminClient({
 
           const isEditing = editingWeek === week.id;
           const isCollapsed = !filtering && collapsed.has(week.id);
-          const phase = weekPhase(week);
+          const phase = weekPhase(week, now);
+          const liveForStudents = week.published && phase === "live";
           const points = all
             .filter((c) => c.published)
             .reduce((sum, c) => sum + c.points, 0);
-          const livePub = all.filter((c) => c.published).length;
+          const publishedCount = all.filter((c) => c.published).length;
 
           return (
             <div
               key={week.id}
               className={`panel flex flex-col ${
-                phase === "live"
+                liveForStudents
                   ? "border-l-2 border-l-accent/70"
                   : week.published
                     ? ""
@@ -497,14 +473,15 @@ export default function AdminClient({
                     {formatWindow(week.startsAt, week.endsAt)}
                     <span className="mx-2 text-border">|</span>
                     <span className="tabular-nums">
-                      {livePub}/{all.length} live · {points} pts
+                      {publishedCount}/{all.length} published · {points} pts
                     </span>
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <PublishToggle
-                    action={updateWeek}
-                    fields={weekFields(week)}
+                    action={setWeekPublished}
+                    idField="weekId"
+                    id={week.id}
                     published={week.published}
                   />
                   <button
@@ -661,8 +638,9 @@ function ChallengeRow({
         <div className="flex flex-wrap items-center gap-2">
           <CopyButton value={challenge.slug} label="slug" />
           <PublishToggle
-            action={updateChallenge}
-            fields={challengeFields(challenge)}
+            action={setChallengePublished}
+            idField="challengeId"
+            id={challenge.id}
             published={challenge.published}
           />
           <button

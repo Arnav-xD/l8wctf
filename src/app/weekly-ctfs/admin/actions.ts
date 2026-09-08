@@ -153,6 +153,36 @@ export async function updateWeek(
   }
 }
 
+// Publish flips touch only the `published` column so a stale form from one
+// host can't overwrite fresher edits made by another.
+export async function setWeekPublished(
+  _state: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  try {
+    const { admin, userId } = await requireCtfHost();
+    const id = required(formData, "weekId");
+    const published = formData.get("published") === "on";
+
+    const { error } = await admin
+      .from("ctf_weeks")
+      .update({ published })
+      .eq("id", id);
+    if (error) throw error;
+
+    await recordCtfAudit(admin, {
+      actorId: userId,
+      action: published ? "week.published" : "week.unpublished",
+      entityType: "week",
+      entityId: id,
+    });
+    refreshCtfPages();
+    return success(published ? "Operation published." : "Operation hidden.");
+  } catch (error) {
+    return failure(error, "Could not change the publish state.");
+  }
+}
+
 export async function deleteWeek(formData: FormData): Promise<void> {
   const { admin, userId } = await requireCtfHost();
   const id = required(formData, "weekId");
@@ -286,6 +316,34 @@ export async function updateChallenge(
   }
 }
 
+export async function setChallengePublished(
+  _state: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  try {
+    const { admin, userId } = await requireCtfHost();
+    const id = required(formData, "challengeId");
+    const published = formData.get("published") === "on";
+
+    const { error } = await admin
+      .from("ctf_challenges")
+      .update({ published })
+      .eq("id", id);
+    if (error) throw error;
+
+    await recordCtfAudit(admin, {
+      actorId: userId,
+      action: published ? "challenge.published" : "challenge.unpublished",
+      entityType: "challenge",
+      entityId: id,
+    });
+    refreshCtfPages();
+    return success(published ? "Challenge published." : "Challenge hidden.");
+  } catch (error) {
+    return failure(error, "Could not change the publish state.");
+  }
+}
+
 export async function deleteChallenge(formData: FormData): Promise<void> {
   const { admin, userId } = await requireCtfHost();
   const id = required(formData, "challengeId");
@@ -333,21 +391,49 @@ export async function attachChallengeFile(
       throw new Error("Upload the file before attaching it to the challenge.");
     }
 
+    const { data: current, error: readError } = await admin
+      .from("ctf_challenges")
+      .select("attachment_path")
+      .eq("id", challengeId)
+      .maybeSingle();
+    if (readError) throw readError;
+    const previousPath = current?.attachment_path ?? null;
+
     const { error } = await admin
       .from("ctf_challenges")
       .update({ attachment_path: path })
       .eq("id", challengeId);
     if (error) throw error;
 
+    // The row now points at the new object, so the file it replaced is
+    // unreferenced — remove it rather than leave it consuming storage. A
+    // failure here must not fail the attach, which already succeeded.
+    let replacedPrevious = false;
+    if (previousPath && previousPath !== path) {
+      const { error: removeError } = await admin.storage
+        .from("ctf-files")
+        .remove([previousPath]);
+      if (removeError) {
+        console.error(
+          "Could not delete the replaced attachment",
+          removeError.message,
+        );
+      } else {
+        replacedPrevious = true;
+      }
+    }
+
     await recordCtfAudit(admin, {
       actorId: userId,
       action: "attachment.attached",
       entityType: "attachment",
       entityId: challengeId,
-      details: { path },
+      details: { path, previousPath, replacedPrevious },
     });
     refreshCtfPages();
-    return success("Challenge file attached.");
+    return success(
+      replacedPrevious ? "Challenge file replaced." : "Challenge file attached.",
+    );
   } catch (error) {
     return failure(error, "Could not attach the challenge file.");
   }

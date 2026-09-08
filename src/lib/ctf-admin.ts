@@ -47,6 +47,9 @@ export async function loadCtfAdminData() {
 
   return {
     role,
+    // Server clock at load time, so the client's first render of operation
+    // status matches the server HTML before it switches to the live clock.
+    loadedAt: Date.now(),
     weeks: (weeksResult.data ?? []).map((week): CtfAdminWeek => ({
       id: week.id,
       slug: week.slug,

@@ -6,16 +6,18 @@ import type { AdminState } from "../actions";
 
 const INITIAL: AdminState = { status: "idle", message: null };
 
-// A one-click publish flip. The underlying update actions revalidate every
-// field, so every current value rides along as a hidden input and only
-// `published` changes.
+// One-click publish flip. Only the id and the new `published` value are sent —
+// the dedicated setWeekPublished / setChallengePublished actions update that
+// single column, so a stale toggle can't overwrite another host's edits.
 export default function PublishToggle({
   action,
-  fields,
+  idField,
+  id,
   published,
 }: {
   action: (state: AdminState, formData: FormData) => Promise<AdminState>;
-  fields: Record<string, string>;
+  idField: "weekId" | "challengeId";
+  id: string;
   published: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL);
@@ -27,14 +29,8 @@ export default function PublishToggle({
 
   return (
     <form action={formAction}>
-      {Object.entries(fields).map(([key, value]) => (
-        <input key={key} type="hidden" name={key} value={value} />
-      ))}
-      {published ? (
-        <input type="hidden" name="published" value="" />
-      ) : (
-        <input type="hidden" name="published" value="on" />
-      )}
+      <input type="hidden" name={idField} value={id} />
+      <input type="hidden" name="published" value={published ? "" : "on"} />
       <button
         type="submit"
         disabled={pending}

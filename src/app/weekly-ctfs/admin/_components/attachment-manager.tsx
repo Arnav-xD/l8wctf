@@ -10,6 +10,11 @@ import {
 
 type Phase = "idle" | "requesting" | "uploading" | "attaching";
 
+// Mirrors ALLOWED_EXTENSIONS in /api/ctf/uploads — a client-side hint only;
+// the route still validates on its own.
+const ACCEPT_EXTENSIONS =
+  ".7z,.bin,.elf,.exe,.gz,.jpeg,.jpg,.json,.mp3,.pcap,.pcapng,.pdf,.png,.tar,.txt,.wav,.webp,.zip";
+
 export default function AttachmentManager({
   challengeId,
   attachmentPath,
@@ -125,6 +130,7 @@ export default function AttachmentManager({
         <input
           ref={inputRef}
           type="file"
+          accept={ACCEPT_EXTENSIONS}
           disabled={busy}
           className="max-w-full text-[0.76rem] text-fg-dim file:mr-3 file:border file:border-border file:bg-bg-3 file:px-2 file:py-1 file:text-[0.7rem] file:uppercase file:tracking-[0.14em] file:text-fg-dim"
         />

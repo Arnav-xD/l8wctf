@@ -41,10 +41,17 @@ export default async function CtfAdminPage() {
         title: "sign in required",
         body: "Sign in with a host or admin account to reach this console.",
       };
-    } else {
+    } else if (message.includes("Host access required")) {
       gate = {
         title: "host access required",
         body: "This account is not a host or admin. Ask an organizer to raise your role.",
+      };
+    } else {
+      gate = {
+        title: "could not load",
+        body: `The host console reached Supabase but the request failed${
+          message ? `: ${message}` : "."
+        }`,
       };
     }
   }
@@ -82,6 +89,7 @@ export default async function CtfAdminPage() {
                   role={data.role}
                   weeks={data.weeks}
                   challenges={data.challenges}
+                  now={data.loadedAt}
                 />
               ) : null}
             </div>
