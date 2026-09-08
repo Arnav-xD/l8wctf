@@ -7,7 +7,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   if (!isSupabaseConfigured()) return NextResponse.json({ error: "CTF storage is not configured." }, { status: 503 });
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) return NextResponse.redirect(new URL("/weekly-ctfs", _request.url));
+  if (!authData.user) return NextResponse.redirect(new URL("/weekly-ctfs/login", _request.url));
 
   const { id } = await params;
   const admin = createAdminClient();
