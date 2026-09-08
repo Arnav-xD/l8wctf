@@ -3,9 +3,9 @@ import { loadCtfDashboard } from "../../../lib/ctf";
 import { LeaderboardPageClient } from "./leaderboard-page-client";
 
 export const metadata: Metadata = {
-  title: "Leaderboard · Weekly CTFs · Layer8",
+  title: "Overall Top 10 · Weekly CTFs · Layer8",
   description:
-    "Layer8 weekly CTF leaderboard — see the top solvers, rankings, and points for the current week.",
+    "Layer8 weekly CTF leaderboard — see the all-time top 10 solvers, rankings, and points.",
 };
 
 export default async function LeaderboardPage() {

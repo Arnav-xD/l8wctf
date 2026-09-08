@@ -21,8 +21,8 @@ interface LeaderboardPageClientProps {
 
 function rankLabel(rank: number): React.ReactNode {
   if (rank === 1) return <span className="text-accent glow font-bold">01</span>;
-  if (rank === 2) return <span className="text-[#94a3b8] font-bold">02</span>;
-  if (rank === 3) return <span className="text-[#78716c] font-bold">03</span>;
+  if (rank === 2) return <span className="text-fg-dim font-bold">02</span>;
+  if (rank === 3) return <span className="text-fg-faint font-bold">03</span>;
   return (
     <span className="text-fg-faint tabular-nums">
       {String(rank).padStart(2, "0")}
@@ -81,11 +81,12 @@ export function LeaderboardPageClient({
                 : "// weekly ctf"}
             </p>
             <h1 className="font-display font-bold text-[clamp(1.6rem,5vw,3rem)] leading-tight text-fg">
-              Leaderboard
+              Overall Top 10
             </h1>
-            {week && (
-              <p className="text-sm text-fg-dim max-w-xl">{week.title}</p>
-            )}
+            <p className="text-sm text-fg-dim max-w-xl">
+              All-time rankings by points across all CTF weeks.
+              {week && <> Current week: <span className="text-fg">{week.title}</span>.</>}
+            </p>
           </div>
 
           {/* ── Demo mode banner ── */}
@@ -128,7 +129,7 @@ export function LeaderboardPageClient({
 
           {/* ── Tie-break note ── */}
           <p className="mt-6 text-[0.68rem] text-fg-faint">
-            Ranking: higher points rank first. Equal points are ordered by earliest score —
+            Overall top 10 across all weeks — ranked by total points. Equal points ordered by earliest score,
             determined server-side.
           </p>
 
@@ -168,14 +169,14 @@ function LeaderboardTable({
         <span className="term-dot" />
         <span className="term-dot" />
         <span className="term-dot" />
-        <span className="text-[0.7rem] text-fg-faint ml-1">{"// ctf_leaderboard"}</span>
+        <span className="text-[0.7rem] text-fg-faint ml-1">{"// overall_top_10"}</span>
       </div>
 
       {/* table */}
       <div className="term-body !min-h-0 !pb-4 overflow-x-auto">
         <table
           className="w-full text-[0.78rem] border-collapse"
-          aria-label="Weekly CTF rankings"
+          aria-label="Overall Top 10 rankings"
         >
           <thead>
             <tr className="text-fg-faint text-[0.68rem] uppercase tracking-[0.1em]">

@@ -22,16 +22,23 @@ function formatCountdown(ms: number): string {
 
 export function WeekHero({ week }: { week: CtfWeek }) {
   const endsAt = new Date(week.endsAt).getTime();
-  const [remaining, setRemaining] = useState(() => Math.max(0, endsAt - Date.now()));
+  // null = not yet mounted; avoids SSR/client hydration mismatch
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setRemaining(Math.max(0, endsAt - Date.now()));
-    }, 1000);
-    return () => clearInterval(id);
+    // Use a 0-delay initial tick so state is only set client-side (after mount).
+    // This avoids both the hydration mismatch and the react-hooks/set-state-in-effect lint error.
+    const tick = () => setRemaining(Math.max(0, endsAt - Date.now()));
+    const id = setInterval(tick, 1000);
+    // Schedule the first tick asynchronously so it runs after the current render
+    const init = setTimeout(tick, 0);
+    return () => {
+      clearInterval(id);
+      clearTimeout(init);
+    };
   }, [endsAt]);
 
-  const ended = remaining === 0;
+  const ended = remaining !== null && remaining === 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -54,10 +61,14 @@ export function WeekHero({ week }: { week: CtfWeek }) {
             </span>
             <span
               className="font-mono font-bold text-accent text-base tabular-nums glow"
-              aria-label={`Time remaining: ${formatCountdown(remaining)}`}
+              aria-label={
+                remaining !== null
+                  ? `Time remaining: ${formatCountdown(remaining)}`
+                  : "Loading countdown"
+              }
               aria-live="off"
             >
-              {formatCountdown(remaining)}
+              {remaining !== null ? formatCountdown(remaining) : "--:--:--"}
             </span>
           </>
         )}

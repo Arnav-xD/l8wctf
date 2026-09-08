@@ -6,10 +6,10 @@ import type { CtfChallenge } from "../../../lib/ctf";
 /* ------------------------------------------------------------------ */
 
 const DIFFICULTY_COLOUR: Record<CtfChallenge["difficulty"], string> = {
-  beginner: "text-[#4ade80] border-[#4ade80]/30",
-  easy: "text-[#86efac] border-[#86efac]/30",
-  medium: "text-[#fbbf24] border-[#fbbf24]/30",
-  hard: "text-[#f87171] border-[#f87171]/30",
+  beginner: "text-fg-faint border-border",
+  easy:     "text-fg-dim border-border",
+  medium:   "text-fg border-border",
+  hard:     "text-accent border-accent/30",
 };
 
 /* ------------------------------------------------------------------ */

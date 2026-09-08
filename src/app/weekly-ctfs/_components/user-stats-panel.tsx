@@ -50,7 +50,7 @@ function SignInCta() {
           </p>
         </div>
         <Link
-          href="/weekly-ctfs"
+          href="/weekly-ctfs#ctf-sign-in-btn"
           id="dashboard-sign-in-btn"
           className="btn btn-solid self-start text-xs"
         >
@@ -76,8 +76,11 @@ function AuthenticatedStats({
   const [pwState, pwAction, pwPending] = useActionState(changePassword, INITIAL_PW);
 
   const totalChallenges = challenges.length;
-  const solved = viewer.solved;
-  const progressPct = totalChallenges > 0 ? Math.round((solved / totalChallenges) * 100) : 0;
+  const weeklySolved = challenges.filter((c) => c.solved).length;
+  const progressPct =
+    totalChallenges > 0
+      ? Math.min(100, Math.round((weeklySolved / totalChallenges) * 100))
+      : 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,7 +111,10 @@ function AuthenticatedStats({
           {/* ── Three stats ── */}
           <dl className="grid grid-cols-3 gap-2 text-center">
             <StatItem label="points" value={viewer.points} />
-            <StatItem label="solved" value={`${solved}/${totalChallenges}`} />
+            <StatItem
+              label="this week"
+              value={`${weeklySolved}/${totalChallenges}`}
+            />
             <StatItem label="streak" value={<StreakValue streak={viewer.streak} />} />
           </dl>
 
@@ -130,7 +136,7 @@ function AuthenticatedStats({
               aria-valuenow={progressPct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${solved} of ${totalChallenges} challenges solved`}
+              aria-label={`${weeklySolved} of ${totalChallenges} challenges solved this week`}
             >
               <div
                 className="h-full bg-accent transition-[width] duration-500"
@@ -138,11 +144,18 @@ function AuthenticatedStats({
               />
             </div>
             <p className="text-[0.65rem] text-fg-faint">
-              {solved === totalChallenges && totalChallenges > 0
+              {weeklySolved === totalChallenges && totalChallenges > 0
                 ? "all challenges solved"
-                : `${solved} of ${totalChallenges} challenges`}
+                : `${weeklySolved} of ${totalChallenges} challenges`}
             </p>
           </div>
+
+          <div className="rule" />
+
+          {/* ── Lifetime solves ── */}
+          <dl className="grid grid-cols-3 gap-2 text-center">
+            <StatItem label="lifetime solves" value={viewer.solved} />
+          </dl>
         </div>
       </div>
 
@@ -169,7 +182,7 @@ function AuthenticatedStats({
               </p>
             )}
             {pwState.status === "success" && (
-              <p role="status" className="text-xs text-[#4ade80]">
+              <p role="status" className="text-xs text-fg">
                 {pwState.message}
               </p>
             )}

@@ -32,10 +32,10 @@ export function FlagForm({
           <span className="term-dot" />
           <span className="term-dot" />
           <span className="term-dot" />
-          <span className="text-[0.7rem] ml-1 text-[#4ade80]">{"// flag_accepted"}</span>
+          <span className="text-[0.7rem] ml-1 text-fg">{"// flag_accepted"}</span>
         </div>
         <div className="term-body !min-h-0 flex flex-col gap-2">
-          <p className="text-[#4ade80] font-bold">
+          <p className="text-fg font-bold">
             {state.status === "correct" && state.message
               ? state.message
               : "You already own this flag."}
@@ -80,7 +80,7 @@ export function FlagForm({
             <span className="prompt">$</span> Sign in to submit a flag.
           </p>
           <Link
-            href="/weekly-ctfs"
+            href="/weekly-ctfs#ctf-sign-in-btn"
             id="challenge-sign-in-btn"
             className="btn btn-solid self-start text-xs"
           >

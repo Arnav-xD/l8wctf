@@ -32,8 +32,21 @@ export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
             </div>
           )}
 
+        {/* ── Hero + top actions ── */}
           {week ? (
-            <WeekHero week={week} />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <WeekHero week={week} />
+              <div className="flex-shrink-0">
+                <Link
+                  href="/weekly-ctfs/leaderboard"
+                  id="hero-leaderboard-btn"
+                  className="btn btn-solid text-xs"
+                  aria-label="View overall top 10 leaderboard"
+                >
+                  &gt; view_leaderboard
+                </Link>
+              </div>
+            </div>
           ) : (
             <NoActiveWeek />
           )}
@@ -70,7 +83,7 @@ export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
                 {/* Leaderboard navigation */}
                 <div className="panel p-4 flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <p className="kicker text-[0.65rem]">{"// leaderboard"}</p>
+                    <p className="kicker text-[0.65rem]">{"// overall_top_10"}</p>
                     {configured && (
                       <span className="text-[0.65rem] text-fg-faint">
                         live
@@ -78,13 +91,13 @@ export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
                     )}
                   </div>
                   <p className="text-xs text-fg-dim leading-relaxed">
-                    See how you stack up against other competitors this week.
+                    All-time top 10 competitors by points.
                   </p>
                   <Link
                     href="/weekly-ctfs/leaderboard"
                     id="dashboard-leaderboard-btn"
                     className="btn self-start text-xs"
-                    aria-label="View full leaderboard"
+                    aria-label="View overall top 10 leaderboard"
                   >
                     &gt; view_leaderboard
                   </Link>
