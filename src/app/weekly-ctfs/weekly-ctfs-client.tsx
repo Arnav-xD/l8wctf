@@ -79,29 +79,6 @@ export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
                     <SignInForm />
                   </>
                 )}
-
-                {/* Leaderboard navigation */}
-                <div className="panel p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <p className="kicker text-[0.65rem]">{"// overall_top_10"}</p>
-                    {configured && (
-                      <span className="text-[0.65rem] text-fg-faint">
-                        live
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-fg-dim leading-relaxed">
-                    All-time top 10 competitors by points.
-                  </p>
-                  <Link
-                    href="/weekly-ctfs/leaderboard"
-                    id="dashboard-leaderboard-btn"
-                    className="btn self-start text-xs"
-                    aria-label="View overall top 10 leaderboard"
-                  >
-                    &gt; view_leaderboard
-                  </Link>
-                </div>
               </aside>
 
             </div>
