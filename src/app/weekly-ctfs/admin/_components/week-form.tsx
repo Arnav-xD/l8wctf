@@ -94,15 +94,22 @@ export default function WeekForm({
         </Field>
       </div>
 
-      <label className="flex items-center gap-2.5 text-[0.8rem] text-fg-dim">
-        <input
-          type="checkbox"
-          name="published"
-          defaultChecked={week?.published ?? false}
-          className="size-4 accent-[var(--accent)]"
-        />
-        published — visible to students
-      </label>
+      {editing ? (
+        <p className="text-[0.75rem] text-fg-faint">
+          Use the published / draft toggle to change visibility — it is not
+          part of this form.
+        </p>
+      ) : (
+        <label className="flex items-center gap-2.5 text-[0.8rem] text-fg-dim">
+          <input
+            type="checkbox"
+            name="published"
+            defaultChecked={false}
+            className="size-4 accent-[var(--accent)]"
+          />
+          published — visible to students
+        </label>
+      )}
 
       <div className="flex items-center gap-3">
         <button type="submit" className="btn btn-solid" disabled={pending}>

@@ -126,6 +126,8 @@ export async function updateWeek(
       throw new Error("The closing time must be after the opening time.");
     }
 
+    // `published` is deliberately omitted — it changes only through
+    // setWeekPublished, so a slow edit can't revert a newer publish flip.
     const { error } = await admin
       .from("ctf_weeks")
       .update({
@@ -135,7 +137,6 @@ export async function updateWeek(
         sequence_no: sequenceNo,
         starts_at: startsAt,
         ends_at: endsAt,
-        published: formData.get("published") === "on",
       })
       .eq("id", id);
     if (error) throw error;
@@ -221,6 +222,8 @@ function challengeFields(formData: FormData) {
     throw new Error("Points must be an integer between 10 and 1000.");
   }
 
+  // No `published` here — createChallenge adds it explicitly; updateChallenge
+  // must never touch it (that goes through setChallengePublished).
   return {
     title,
     slug: slugify(title),
@@ -230,7 +233,6 @@ function challengeFields(formData: FormData) {
     summary: required(formData, "summary"),
     description: required(formData, "description"),
     connection_info: String(formData.get("connectionInfo") ?? "").trim() || null,
-    published: formData.get("published") === "on",
   };
 }
 
@@ -249,6 +251,7 @@ export async function createChallenge(
       .insert({
         week_id: weekId,
         ...challengeFields(formData),
+        published: formData.get("published") === "on",
         created_by: userId,
       })
       .select("id")
@@ -373,6 +376,10 @@ export async function attachChallengeFile(
   _state: AdminState,
   formData: FormData,
 ): Promise<AdminState> {
+  // Set once the freshly uploaded object is confirmed present; cleared once the
+  // row links to it. If linking fails in between, the catch removes the object
+  // so retries don't leave 50 MB orphans behind.
+  let cleanupUpload: (() => Promise<void>) | null = null;
   try {
     const { admin, userId } = await requireCtfHost();
     const challengeId = required(formData, "challengeId");
@@ -390,6 +397,17 @@ export async function attachChallengeFile(
     if (storageError || !objects?.some((object) => object.name === fileName)) {
       throw new Error("Upload the file before attaching it to the challenge.");
     }
+    cleanupUpload = async () => {
+      const { error: cleanupError } = await admin.storage
+        .from("ctf-files")
+        .remove([path]);
+      if (cleanupError) {
+        console.error(
+          "Could not remove the unlinked upload",
+          cleanupError.message,
+        );
+      }
+    };
 
     const { data: current, error: readError } = await admin
       .from("ctf_challenges")
@@ -404,6 +422,9 @@ export async function attachChallengeFile(
       .update({ attachment_path: path })
       .eq("id", challengeId);
     if (error) throw error;
+
+    // Linked — the new object is now referenced, so keep it.
+    cleanupUpload = null;
 
     // The row now points at the new object, so the file it replaced is
     // unreferenced — remove it rather than leave it consuming storage. A
@@ -435,6 +456,7 @@ export async function attachChallengeFile(
       replacedPrevious ? "Challenge file replaced." : "Challenge file attached.",
     );
   } catch (error) {
+    if (cleanupUpload) await cleanupUpload();
     return failure(error, "Could not attach the challenge file.");
   }
 }
@@ -448,25 +470,35 @@ export async function removeChallengeAttachment(formData: FormData): Promise<voi
     .eq("id", challengeId)
     .maybeSingle();
   if (readError) throw readError;
-  if (!challenge?.attachment_path) return;
+  const previousPath = challenge?.attachment_path ?? null;
+  if (!previousPath) return;
 
-  const { error: storageError } = await admin.storage
-    .from("ctf-files")
-    .remove([challenge.attachment_path]);
-  if (storageError) throw storageError;
-
+  // Clear the link first. Only once the row no longer references the object is
+  // it safe to delete it — otherwise a failed update would leave the challenge
+  // pointing at a file that is already gone.
   const { error } = await admin
     .from("ctf_challenges")
     .update({ attachment_path: null })
     .eq("id", challengeId);
   if (error) throw error;
 
+  const { error: storageError } = await admin.storage
+    .from("ctf-files")
+    .remove([previousPath]);
+  const removed = !storageError;
+  if (storageError) {
+    console.error(
+      "Cleared the attachment link but could not delete the object",
+      storageError.message,
+    );
+  }
+
   await recordCtfAudit(admin, {
     actorId: userId,
     action: "attachment.removed",
     entityType: "attachment",
     entityId: challengeId,
-    details: { path: challenge.attachment_path },
+    details: { path: previousPath, removed },
   });
   refreshCtfPages();
 }
