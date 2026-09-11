@@ -14,7 +14,7 @@ const supabase = createClient(url, serviceKey, {
 });
 
 const checks = [
-  ["profiles table", () => supabase.from("ctf_profiles").select("id", { count: "exact", head: true })],
+  ["profiles table", () => supabase.from("ctf_profiles").select("id,username,account_status", { count: "exact", head: true })],
   ["weeks table", () => supabase.from("ctf_weeks").select("id", { count: "exact", head: true })],
   ["challenges table", () => supabase.from("ctf_challenges").select("id", { count: "exact", head: true })],
   ["submissions table", () => supabase.from("ctf_submissions").select("id", { count: "exact", head: true })],

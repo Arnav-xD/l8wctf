@@ -3,12 +3,20 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isValidSrn, srnToAuthEmail } from "../../lib/ctf-auth";
+import {
+  getSiteUrl,
+  isValidEmail,
+  isValidUsername,
+  normalizeEmail,
+  normalizeUsername,
+  safeAuthRedirect,
+} from "../../lib/ctf-auth";
 import { isSupabaseConfigured } from "../../lib/supabase/config";
 import { createClient } from "../../lib/supabase/server";
 
 export type AuthState = {
   error: string | null;
+  message?: string | null;
 };
 
 export type FlagState = {
@@ -31,41 +39,149 @@ export async function signIn(
     };
   }
 
-  const srn = String(formData.get("srn") ?? "");
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
   const password = String(formData.get("password") ?? "");
+  const next = safeAuthRedirect(formData.get("next"));
 
-  if (!isValidSrn(srn) || password.length < 8) {
+  if (!isValidEmail(email) || password.length < 10) {
     return {
-      error: "Enter a valid SRN and password.",
+      error: "Enter a valid email and password.",
     };
   }
 
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: srnToAuthEmail(srn),
+    email,
     password,
   });
 
   if (error || !data.user) {
     return {
-      error: "Invalid SRN or password.",
+      error: "Invalid email or password.",
     };
   }
 
   const { data: profile } = await supabase
     .from("ctf_profiles")
-    .select("role")
+    .select("role,account_status")
     .eq("id", data.user.id)
     .maybeSingle();
 
+  if (!profile || profile.account_status !== "active") {
+    await supabase.auth.signOut();
+    return { error: "This CTF account is unavailable." };
+  }
+
   revalidatePath("/weekly-ctfs", "layout");
+
+  if (next !== "/weekly-ctfs") redirect(next);
 
   if (profile?.role === "host" || profile?.role === "admin") {
     redirect("/weekly-ctfs/admin");
   }
 
   redirect("/weekly-ctfs");
+}
+
+export async function signUp(
+  _previousState: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  if (!isSupabaseConfigured()) {
+    return { error: "CTF authentication has not been configured yet." };
+  }
+
+  const username = normalizeUsername(String(formData.get("username") ?? ""));
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+  const captchaToken = String(formData.get("captchaToken") ?? "").trim();
+
+  if (!isValidUsername(username)) {
+    return {
+      error:
+        "Use 3–24 lowercase letters, numbers, underscores, or hyphens for your username.",
+    };
+  }
+  if (!isValidEmail(email)) return { error: "Enter a valid email address." };
+  if (password.length < 10) return { error: "Use at least 10 characters." };
+  if (password !== confirmation) return { error: "The passwords do not match." };
+  if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken) {
+    return { error: "Complete the verification challenge and try again." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username },
+      emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=/weekly-ctfs`,
+      captchaToken: captchaToken || undefined,
+    },
+  });
+
+  if (error) {
+    if (/username|duplicate|unique/i.test(error.message)) {
+      return { error: "That username is already taken." };
+    }
+    return { error: "We could not create that account. Check your details and try again." };
+  }
+
+  redirect(`/weekly-ctfs/check-email?email=${encodeURIComponent(email)}`);
+}
+
+export async function requestPasswordReset(
+  _previousState: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  if (!isSupabaseConfigured()) {
+    return { error: "CTF authentication has not been configured yet." };
+  }
+
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
+  if (!isValidEmail(email)) return { error: "Enter a valid email address." };
+
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${getSiteUrl()}/auth/confirm?next=/weekly-ctfs/reset-password`,
+  });
+
+  return {
+    error: null,
+    message: "If an account exists for that email, a reset link is on its way.",
+  };
+}
+
+export async function resetPassword(
+  _previousState: PasswordState,
+  formData: FormData,
+): Promise<PasswordState> {
+  if (!isSupabaseConfigured()) {
+    return { status: "error", message: "Authentication is not configured." };
+  }
+
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+  if (password.length < 10) {
+    return { status: "error", message: "Use at least 10 characters." };
+  }
+  if (password !== confirmation) {
+    return { status: "error", message: "The passwords do not match." };
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) {
+    return { status: "error", message: "This reset link has expired. Request a new one." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { status: "error", message: "The password could not be updated." };
+
+  revalidatePath("/weekly-ctfs", "layout");
+  return { status: "success", message: "Password updated. You can continue to the CTF." };
 }
 
 export async function signOut() {
@@ -211,6 +327,13 @@ export async function submitFlag(
     return {
       status: "error",
       message: "Sign in before submitting a flag.",
+    };
+  }
+
+  if (result.outcome === "account_disabled") {
+    return {
+      status: "error",
+      message: "This CTF account is unavailable.",
     };
   }
 

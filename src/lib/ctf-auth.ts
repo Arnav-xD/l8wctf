@@ -1,13 +1,44 @@
-export function normalizeSrn(value: string) {
-  return value.trim().toUpperCase().replace(/\s+/g, "");
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_PATTERN = /^[a-z0-9_-]{3,24}$/;
+
+export function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
 }
 
-export function isValidSrn(value: string) {
-  return /^[A-Z0-9]{6,24}$/.test(normalizeSrn(value));
+export function isValidEmail(value: string) {
+  const email = normalizeEmail(value);
+  return email.length <= 254 && EMAIL_PATTERN.test(email);
 }
 
-// Supabase password auth requires an email or phone identifier. The address is
-// internal-only; students still enter only their SRN and password.
-export function srnToAuthEmail(value: string) {
-  return `${normalizeSrn(value).toLowerCase()}@accounts.layer8.local`;
+export function normalizeUsername(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export function isValidUsername(value: string) {
+  return USERNAME_PATTERN.test(normalizeUsername(value));
+}
+
+export function safeAuthRedirect(value: FormDataEntryValue | string | null) {
+  const path = typeof value === "string" ? value : "";
+  let decoded = path;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return "/weekly-ctfs";
+  }
+  if (
+    !decoded.startsWith("/weekly-ctfs") ||
+    decoded.startsWith("//") ||
+    decoded.includes("\\")
+  ) {
+    return "/weekly-ctfs";
+  }
+  return path;
+}
+
+export function getSiteUrl() {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
 }

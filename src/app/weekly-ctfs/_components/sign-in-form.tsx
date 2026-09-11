@@ -22,19 +22,19 @@ export function SignInForm() {
       </div>
 
       <form action={action} className="term-body !min-h-0 flex flex-col gap-4">
-        {/* SRN */}
+        {/* Email */}
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="ctf-srn" className="text-[0.72rem] text-fg-faint uppercase tracking-widest">
-            SRN
+          <label htmlFor="ctf-email" className="text-[0.72rem] text-fg-faint uppercase tracking-widest">
+            Email
           </label>
           <input
-            id="ctf-srn"
-            name="srn"
-            type="text"
+            id="ctf-email"
+            name="email"
+            type="email"
             required
             autoComplete="username"
-            placeholder="PES2UG22CS000"
-            className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors uppercase tracking-widest"
+            placeholder="operator@example.com"
+            className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors"
             disabled={pending}
           />
         </div>

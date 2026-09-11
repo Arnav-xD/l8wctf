@@ -7,13 +7,13 @@ const args = Object.fromEntries(
   }),
 );
 
-const srn = (args.srn ?? "").trim().toUpperCase();
+const email = (args.email ?? "").trim().toLowerCase();
 const password = process.env.CTF_INITIAL_PASSWORD;
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!/^[A-Z0-9]{6,24}$/.test(srn)) {
-  throw new Error("Usage: npm run ctf:reset-password -- --srn=PES...");
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  throw new Error("Usage: npm run ctf:reset-password -- --email=user@example.com");
 }
 if (!url || !serviceKey || !password || password.length < 10) {
   throw new Error(
@@ -24,15 +24,18 @@ if (!url || !serviceKey || !password || password.length < 10) {
 const supabase = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
-const { data: profile, error: profileError } = await supabase
-  .from("ctf_profiles")
-  .select("id")
-  .eq("srn", srn)
-  .maybeSingle();
-if (profileError) throw profileError;
-if (!profile) throw new Error(`No CTF account exists for ${srn}.`);
+let page = 1;
+let user;
+do {
+  const { data, error: listError } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+  if (listError) throw listError;
+  user = data.users.find((candidate) => candidate.email?.toLowerCase() === email);
+  if (user || data.users.length < 1000) break;
+  page += 1;
+} while (!user);
+if (!user) throw new Error(`No CTF account exists for ${email}.`);
 
-const { error } = await supabase.auth.admin.updateUserById(profile.id, {
+const { error } = await supabase.auth.admin.updateUserById(user.id, {
   password,
 });
 if (error) throw error;
@@ -41,8 +44,8 @@ await supabase.from("ctf_audit_log").insert({
   actor_id: null,
   action: "account.password_reset_by_script",
   entity_type: "account",
-  entity_id: profile.id,
-  details: { srn },
+  entity_id: user.id,
+  details: { email },
 });
 
-console.log(`Reset the temporary password for ${srn}. Share it securely and require an immediate change.`);
+console.log(`Reset the emergency password for ${email}.`);

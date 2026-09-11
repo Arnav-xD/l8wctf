@@ -93,11 +93,11 @@ function AuthenticatedStats({
           <span className="text-[0.7rem] text-fg-faint ml-1">{"// profile"}</span>
         </div>
         <div className="term-body !min-h-0 flex flex-col gap-4">
-          {/* handle + role */}
+          {/* username + role */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-baseline gap-2 min-w-0">
               <span className="text-fg-faint text-xs flex-shrink-0">$</span>
-              <span className="text-accent font-bold truncate">{viewer.handle}</span>
+              <span className="text-accent font-bold truncate">{viewer.username}</span>
             </div>
             {viewer.role !== "student" && (
               <span className="text-[0.62rem] uppercase tracking-widest text-accent border border-accent/30 px-1.5 py-0.5 flex-shrink-0">

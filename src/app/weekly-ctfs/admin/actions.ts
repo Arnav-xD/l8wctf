@@ -108,6 +108,48 @@ export async function createWeek(
   }
 }
 
+export async function updateAccountAccess(
+  _state: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  try {
+    const { admin, userId, role: actorRole } = await requireCtfHost();
+    if (actorRole !== "admin") throw new Error("Admin access required.");
+
+    const accountId = required(formData, "accountId");
+    const role = required(formData, "role");
+    const status = required(formData, "status");
+    if (!new Set(["student", "host", "admin"]).has(role)) {
+      throw new Error("Invalid account role.");
+    }
+    if (!new Set(["active", "suspended"]).has(status)) {
+      throw new Error("Invalid account status.");
+    }
+    if (accountId === userId) {
+      throw new Error("Use another admin account to change your own access.");
+    }
+
+    const { error } = await admin
+      .from("ctf_profiles")
+      .update({ role, account_status: status })
+      .eq("id", accountId);
+    if (error) throw error;
+
+    await recordCtfAudit(admin, {
+      actorId: userId,
+      action: "account.access_updated",
+      entityType: "account",
+      entityId: accountId,
+      details: { role, status },
+    });
+    revalidatePath("/weekly-ctfs/admin");
+    revalidatePath("/weekly-ctfs");
+    return success("Account access updated.");
+  } catch (error) {
+    return failure(error, "Could not update account access.");
+  }
+}
+
 export async function updateWeek(
   _state: AdminState,
   formData: FormData,

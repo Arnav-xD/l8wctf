@@ -99,7 +99,7 @@ export function LeaderboardPageClient({
 
           {/* ── Viewer rank callout (if authenticated + on leaderboard) ── */}
           {viewer && leaderboard.length > 0 && (() => {
-            const myEntry = leaderboard.find((e) => e.handle === viewer.handle);
+            const myEntry = leaderboard.find((e) => e.username === viewer.username);
             if (!myEntry) return null;
             return (
               <div
@@ -124,7 +124,7 @@ export function LeaderboardPageClient({
           {leaderboard.length === 0 ? (
             <EmptyLeaderboard />
           ) : (
-            <LeaderboardTable entries={leaderboard} viewerHandle={viewer?.handle} />
+            <LeaderboardTable entries={leaderboard} viewerUsername={viewer?.username} />
           )}
 
           {/* ── Tie-break note ── */}
@@ -157,10 +157,10 @@ export function LeaderboardPageClient({
 
 function LeaderboardTable({
   entries,
-  viewerHandle,
+  viewerUsername,
 }: {
   entries: LeaderboardEntry[];
-  viewerHandle?: string;
+  viewerUsername?: string;
 }) {
   return (
     <div className="term" aria-label="CTF Leaderboard">
@@ -181,7 +181,7 @@ function LeaderboardTable({
           <thead>
             <tr className="text-fg-faint text-[0.68rem] uppercase tracking-[0.1em]">
               <th className="text-left pb-3 pr-4 font-normal w-10">#</th>
-              <th className="text-left pb-3 pr-4 font-normal">handle</th>
+              <th className="text-left pb-3 pr-4 font-normal">username</th>
               <th className="text-right pb-3 pr-4 font-normal">pts</th>
               <th className="text-right pb-3 pr-4 font-normal hidden sm:table-cell">
                 solves
@@ -193,7 +193,7 @@ function LeaderboardTable({
           </thead>
           <tbody>
             {entries.map((entry) => {
-              const isViewer = entry.handle === viewerHandle;
+              const isViewer = entry.username === viewerUsername;
               const isTop3 = entry.rank <= 3;
               return (
                 <tr
@@ -211,7 +211,7 @@ function LeaderboardTable({
                     {rankLabel(entry.rank)}
                   </td>
 
-                  {/* handle */}
+                  {/* username */}
                   <td className="py-2.5 pr-4">
                     <div className="flex items-center gap-1.5">
                       <span className="text-accent/60 font-mono text-[0.68rem] select-none">
@@ -226,7 +226,7 @@ function LeaderboardTable({
                             : "text-fg-dim"
                         }`}
                       >
-                        {entry.handle}
+                        {entry.username}
                       </span>
                       {isViewer && (
                         <span className="text-[0.58rem] uppercase tracking-widest text-accent border border-accent/30 px-1 py-0.5 leading-none">

@@ -27,9 +27,20 @@ export type CtfAdminChallenge = {
   published: boolean;
 };
 
+export type CtfAdminAccount = {
+  id: string;
+  username: string;
+  displayName: string;
+  email: string | null;
+  role: "student" | "host" | "admin";
+  status: "active" | "suspended";
+  createdAt: string;
+  lastSignInAt: string | null;
+};
+
 export async function loadCtfAdminData() {
   const { admin, role } = await requireCtfHost();
-  const [weeksResult, challengesResult] = await Promise.all([
+  const [weeksResult, challengesResult, profilesResult, usersResult] = await Promise.all([
     admin
       .from("ctf_weeks")
       .select("id,slug,sequence_no,title,summary,starts_at,ends_at,published")
@@ -40,13 +51,42 @@ export async function loadCtfAdminData() {
         "id,week_id,slug,title,category,difficulty,points,summary,description,connection_info,attachment_path,published",
       )
       .order("created_at", { ascending: false }),
+    role === "admin"
+      ? admin
+          .from("ctf_profiles")
+          .select("id,username,display_name,role,account_status,created_at")
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    role === "admin"
+      ? admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      : Promise.resolve({ data: { users: [] }, error: null }),
   ]);
 
   if (weeksResult.error) throw weeksResult.error;
   if (challengesResult.error) throw challengesResult.error;
+  if (profilesResult.error) throw profilesResult.error;
+  if (usersResult.error) throw usersResult.error;
+
+  const authUsers = new Map(
+    usersResult.data.users.map((user) => [user.id, user]),
+  );
 
   return {
     role,
+    canManageAccounts: role === "admin",
+    accounts: (profilesResult.data ?? []).map((profile): CtfAdminAccount => {
+      const authUser = authUsers.get(profile.id);
+      return {
+        id: profile.id,
+        username: profile.username,
+        displayName: profile.display_name,
+        email: authUser?.email ?? null,
+        role: profile.role,
+        status: profile.account_status,
+        createdAt: profile.created_at,
+        lastSignInAt: authUser?.last_sign_in_at ?? null,
+      };
+    }),
     // Server clock at load time, so the client's first render of operation
     // status matches the server HTML before it switches to the live clock.
     loadedAt: Date.now(),

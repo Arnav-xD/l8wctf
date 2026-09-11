@@ -48,7 +48,7 @@ export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
               </div>
             </div>
           ) : (
-            <NoActiveWeek />
+            <NoActiveWeek viewer={viewer} />
           )}
         </section>
 
@@ -95,7 +95,7 @@ export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
 /*  No active week state                                               */
 /* ------------------------------------------------------------------ */
 
-function NoActiveWeek() {
+function NoActiveWeek({ viewer }: { viewer: CtfDashboard["viewer"] }) {
   return (
     <div className="flex flex-col gap-4 py-10">
       <p className="kicker">{"// no active week"}</p>
@@ -119,7 +119,11 @@ function NoActiveWeek() {
       </p>
 
       <div className="mt-4 max-w-[22rem]">
-        <SignInForm />
+        {viewer ? (
+          <UserStatsPanel viewer={viewer} challenges={[]} />
+        ) : (
+          <SignInForm />
+        )}
       </div>
     </div>
   );

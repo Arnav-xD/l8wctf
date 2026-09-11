@@ -13,11 +13,16 @@ export async function requireCtfHost() {
   const admin = createAdminClient();
   const { data: profile, error: profileError } = await admin
     .from("ctf_profiles")
-    .select("role")
+    .select("role,account_status")
     .eq("id", data.user.id)
     .maybeSingle();
 
-  if (profileError || !profile || !["host", "admin"].includes(profile.role)) {
+  if (
+    profileError ||
+    !profile ||
+    profile.account_status !== "active" ||
+    !["host", "admin"].includes(profile.role)
+  ) {
     throw new Error("Host access required.");
   }
 

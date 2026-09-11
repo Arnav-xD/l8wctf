@@ -31,8 +31,7 @@ export type CtfWeek = {
 
 export type CtfViewer = {
   id: string;
-  srn: string;
-  handle: string;
+  username: string;
   displayName: string;
   role: "student" | "host" | "admin";
   points: number;
@@ -42,7 +41,7 @@ export type CtfViewer = {
 
 export type LeaderboardEntry = {
   rank: number;
-  handle: string;
+  username: string;
   points: number;
   solves: number;
   lastSolveAt: string | null;
@@ -144,9 +143,9 @@ export async function loadCtfDashboard(): Promise<CtfDashboard> {
       challenges: DEMO_CHALLENGES,
       viewer: null,
       leaderboard: [
-        { rank: 1, handle: "nullbyte", points: 900, solves: 4, lastSolveAt: null },
-        { rank: 2, handle: "shellshock", points: 650, solves: 3, lastSolveAt: null },
-        { rank: 3, handle: "packetwitch", points: 500, solves: 3, lastSolveAt: null },
+        { rank: 1, username: "nullbyte", points: 900, solves: 4, lastSolveAt: null },
+        { rank: 2, username: "shellshock", points: 650, solves: 3, lastSolveAt: null },
+        { rank: 3, username: "packetwitch", points: 500, solves: 3, lastSolveAt: null },
       ],
     };
   }
@@ -168,25 +167,6 @@ export async function loadCtfDashboard(): Promise<CtfDashboard> {
   ]);
 
   const weekRow = weekResult.data;
-  if (!weekRow) {
-    return {
-      configured: true,
-      week: null,
-      challenges: [],
-      viewer: null,
-      leaderboard: [],
-    };
-  }
-
-  const challengeResult = await supabase
-    .from("ctf_challenges")
-    .select(
-      "id,slug,title,category,difficulty,points,summary,description,connection_info,attachment_path,solve_count",
-    )
-    .eq("week_id", weekRow.id)
-    .eq("published", true)
-    .order("points", { ascending: true });
-
   const user = authData.user;
   let solvedIds = new Set<string>();
   let viewer: CtfViewer | null = null;
@@ -195,7 +175,7 @@ export async function loadCtfDashboard(): Promise<CtfDashboard> {
     const [profileResult, solvesResult] = await Promise.all([
       supabase
         .from("ctf_profiles")
-        .select("srn,handle,display_name,role")
+        .select("username,display_name,role,account_status")
         .eq("id", user.id)
         .maybeSingle(),
       supabase
@@ -215,19 +195,53 @@ export async function loadCtfDashboard(): Promise<CtfDashboard> {
         : [];
     });
     const profile = profileResult.data;
-    if (profile) {
+    if (profile?.account_status === "active") {
       viewer = {
         id: user.id,
-        srn: profile.srn,
-        handle: profile.handle,
+        username: profile.username,
         displayName: profile.display_name,
         role: profile.role,
         points: solveRows.reduce((sum, solve) => sum + solve.points_awarded, 0),
         solved: solveRows.length,
-        streak: calculateStreak(sequences, weekRow.sequence_no),
+        streak: weekRow ? calculateStreak(sequences, weekRow.sequence_no) : 0,
       };
     }
   }
+
+  const leaderboardRows = (leaderboardResult.data ?? []) as Array<{
+    username: string;
+    total_points: number | string;
+    solve_count: number | string;
+    last_solve_at: string | null;
+  }>;
+  const leaderboard: LeaderboardEntry[] = leaderboardRows.map(
+    (entry, index) => ({
+      rank: index + 1,
+      username: entry.username,
+      points: Number(entry.total_points),
+      solves: Number(entry.solve_count),
+      lastSolveAt: entry.last_solve_at,
+    }),
+  );
+
+  if (!weekRow) {
+    return {
+      configured: true,
+      week: null,
+      challenges: [],
+      viewer,
+      leaderboard,
+    };
+  }
+
+  const challengeResult = await supabase
+    .from("ctf_challenges")
+    .select(
+      "id,slug,title,category,difficulty,points,summary,description,connection_info,attachment_path,solve_count",
+    )
+    .eq("week_id", weekRow.id)
+    .eq("published", true)
+    .order("points", { ascending: true });
 
   const challenges: CtfChallenge[] = (challengeResult.data ?? []).map((row) => ({
     id: row.id,
@@ -243,22 +257,6 @@ export async function loadCtfDashboard(): Promise<CtfDashboard> {
     solveCount: row.solve_count,
     solved: solvedIds.has(row.id),
   }));
-
-  const leaderboardRows = (leaderboardResult.data ?? []) as Array<{
-    handle: string;
-    total_points: number | string;
-    solve_count: number | string;
-    last_solve_at: string | null;
-  }>;
-  const leaderboard: LeaderboardEntry[] = leaderboardRows.map(
-    (entry, index) => ({
-      rank: index + 1,
-      handle: entry.handle,
-      points: Number(entry.total_points),
-      solves: Number(entry.solve_count),
-      lastSolveAt: entry.last_solve_at,
-    }),
-  );
 
   return {
     configured: true,

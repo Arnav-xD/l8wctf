@@ -1,10 +1,11 @@
 # Layer8 Weekly CTF
 
-The Weekly CTF uses Supabase for PostgreSQL, password authentication, and private challenge-file storage. The visible login remains **SRN + password**. Internally, Supabase Auth receives a non-routable email-shaped identifier derived from the normalized SRN because its password provider accepts email or phone identifiers.
+The Weekly CTF uses Supabase for PostgreSQL, email/password authentication, and private challenge-file storage. Anyone can create an account with a verified email address and a unique public username.
 
 ## Security decisions
 
-- There is no public self-registration in the first release. Hosts provision accounts from the verified college roster so an attacker cannot claim a known SRN.
+- Public signups require email confirmation. Email addresses remain in Supabase Auth and are not exposed on profiles or leaderboards.
+- User-supplied auth metadata can create only an active `student` profile. Host/admin roles are assigned separately by trusted administrators.
 - Passwords are handled by Supabase Auth and are never stored in application tables.
 - Raw flags are never sent to the browser or saved with submissions. PostgreSQL receives only a SHA-256 hash of the submitted value.
 - Challenge secrets are isolated from public challenge metadata and accessible only through the service role.
@@ -13,44 +14,47 @@ The Weekly CTF uses Supabase for PostgreSQL, password authentication, and privat
 - All concurrent attempts from the same account are serialized before the rate limit is evaluated, including attempts against different challenges. Different students are not blocked by one another.
 - The service-role key is server-only. Never prefix it with `NEXT_PUBLIC_`.
 - Host mutations are authorized against the stored profile role and recorded in `ctf_audit_log`.
+- Suspended accounts cannot submit flags, appear on the leaderboard, or enter the host console.
 
 ## Project setup
 
 1. Create a Supabase project.
-2. In Authentication settings, disable public user signups. Account creation is performed only with the server-side admin script.
+2. Keep public signups disabled until every migration and the auth UI are deployed.
 3. In the SQL editor, run the migrations in order:
    - `supabase/migrations/202609060001_weekly_ctf.sql`
    - `supabase/migrations/202609070001_ctf_backend_hardening.sql`
    - `supabase/migrations/202609070002_ctf_submission_concurrency.sql`
-4. Optionally run `supabase/seed.sql` for one demo challenge. Replace its flag before production.
-5. Copy `.env.example` to `.env.local` and add the project URL, publishable key, and service-role key.
-6. Run `npm run ctf:verify-backend` to confirm the tables, leaderboard function, and private bucket are reachable.
-7. Add the same three variables to the Vercel project. Keep the service-role value secret.
-8. Run `npm run dev` and open `/weekly-ctfs`.
+   - `supabase/migrations/202609110001_public_email_auth.sql`
+4. In Authentication settings, enable public email signup and keep email confirmation enabled. Leave anonymous sign-in and manual linking disabled.
+5. Configure Site URL and redirect URLs for local, preview, and production `/auth/confirm` routes.
+6. Configure custom SMTP before public launch and enable Cloudflare Turnstile in Supabase CAPTCHA settings.
+7. Optionally run `supabase/seed.sql` for one demo challenge. Replace its flag before production.
+8. Copy `.env.example` to `.env.local`, add the project keys and site URL, then run `npm run ctf:verify-backend`.
+9. Add the same variables to Vercel. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only.
 
-## Provision an account
+## Provision a host or admin
 
 Set a temporary password in the shell for this command only, then run:
 
 ```powershell
 $env:CTF_INITIAL_PASSWORD="temporary-password-here"
-npm run ctf:provision-user -- --srn=PES2UGXXCS000 --name="Student Name" --handle=student_alias
+npm run ctf:provision-user -- --email=host@example.com --name="Host Name" --username=host_alias --role=host
 Remove-Item Env:CTF_INITIAL_PASSWORD
 ```
 
-Use `--role=host` or `--role=admin` for trusted organizers. Students should immediately change their temporary password from `/weekly-ctfs/account`.
+Ordinary users sign themselves up. Use this script only for trusted `host` or `admin` accounts, and rotate the temporary password immediately.
 
 ## Reset a password
 
-Because the visible accounts use internal, non-routable email identifiers, password recovery is handled by an administrator in the first release:
+Users normally recover passwords through the public forgot-password flow. For emergency administrator recovery only:
 
 ```powershell
 $env:CTF_INITIAL_PASSWORD="new-temporary-password"
-npm run ctf:reset-password -- --srn=PES2UGXXCS000
+npm run ctf:reset-password -- --email=user@example.com
 Remove-Item Env:CTF_INITIAL_PASSWORD
 ```
 
-Share temporary passwords through a private channel and require the student to change the password after signing in.
+Share emergency passwords through a private channel and require an immediate change.
 
 ## Publishing challenges
 
@@ -71,16 +75,16 @@ Use a separate challenge infrastructure host for intentionally vulnerable web se
 
 ## UI integration contracts
 
-- Student forms import `signIn`, `signOut`, `changePassword`, and `submitFlag` from `src/app/weekly-ctfs/actions.ts`.
+- Public auth forms import `signUp`, `signIn`, `requestPasswordReset`, and `resetPassword` from `src/app/weekly-ctfs/actions.ts`.
+- Signed-in forms also import `signOut`, `changePassword`, and `submitFlag` from that module.
 - Host forms import the create/update/delete and attachment actions from `src/app/weekly-ctfs/admin/actions.ts`.
 - Host pages load editable data through `loadCtfAdminData` from `src/lib/ctf-admin.ts`.
 - Public/student pages load data through `loadCtfDashboard` and `loadChallenge` from `src/lib/ctf.ts`.
 
 ## Before production
 
-- Confirm the exact SRN format and tighten the database and application regex.
-- Agree on an account-provisioning process and initial-password distribution channel.
-- Enable leaked-password protection and a strong password policy in Supabase Auth.
+- Configure and test custom SMTP delivery, confirmation, password reset, and redirect URLs.
+- Enable CAPTCHA and keep a strong password policy in Supabase Auth.
 - Configure backups and review RLS with two test accounts.
 - Test unpublished, upcoming, active, and closed challenge states.
 - Add CAPTCHA or infrastructure-level rate limiting if abuse appears.

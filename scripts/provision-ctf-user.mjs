@@ -7,16 +7,16 @@ const args = Object.fromEntries(
   }),
 );
 
-const srn = (args.srn ?? "").trim().toUpperCase();
+const email = (args.email ?? "").trim().toLowerCase();
 const displayName = (args.name ?? "").trim();
-const handle = (args.handle ?? srn.toLowerCase()).trim().toLowerCase();
+const username = (args.username ?? "").trim().toLowerCase();
 const role = args.role ?? "student";
 const password = process.env.CTF_INITIAL_PASSWORD;
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!/^[A-Z0-9]{6,24}$/.test(srn) || !displayName || !/^[a-z0-9_-]{3,24}$/.test(handle)) {
-  throw new Error("Usage: npm run ctf:provision-user -- --srn=PES... --name=\"Student Name\" --handle=alias [--role=student|host|admin]");
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !displayName || !/^[a-z0-9_-]{3,24}$/.test(username)) {
+  throw new Error("Usage: npm run ctf:provision-user -- --email=host@example.com --name=\"Host Name\" --username=alias [--role=host|admin]");
 }
 if (!url || !serviceKey || !password || password.length < 10) {
   throw new Error("Set NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and CTF_INITIAL_PASSWORD (10+ characters).");
@@ -26,21 +26,19 @@ if (!["student", "host", "admin"].includes(role)) throw new Error("Invalid role.
 const supabase = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
-const email = `${srn.toLowerCase()}@accounts.layer8.local`;
 const { data, error } = await supabase.auth.admin.createUser({
   email,
   password,
   email_confirm: true,
+  user_metadata: { username },
 });
 if (error) throw error;
 
-const { error: profileError } = await supabase.from("ctf_profiles").insert({
-  id: data.user.id,
-  srn,
+const { error: profileError } = await supabase.from("ctf_profiles").update({
   display_name: displayName,
-  handle,
   role,
-});
+  account_status: "active",
+}).eq("id", data.user.id);
 if (profileError) {
   await supabase.auth.admin.deleteUser(data.user.id);
   throw profileError;
@@ -51,7 +49,7 @@ await supabase.from("ctf_audit_log").insert({
   action: "account.provisioned_by_script",
   entity_type: "account",
   entity_id: data.user.id,
-  details: { srn, role },
+  details: { email, username, role },
 });
 
-console.log(`Provisioned ${srn} as ${role}. Ask the student to change the temporary password when that flow is enabled.`);
+console.log(`Provisioned ${email} (${username}) as ${role}.`);
