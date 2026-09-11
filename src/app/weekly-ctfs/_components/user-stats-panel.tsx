@@ -49,13 +49,22 @@ function SignInCta() {
             Sign in to track your progress, view your streak, and submit flags.
           </p>
         </div>
-        <Link
-          href="/weekly-ctfs#ctf-sign-in-btn"
-          id="dashboard-sign-in-btn"
-          className="btn btn-solid self-start text-xs"
-        >
-          &gt; sign_in
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/weekly-ctfs/sign-in"
+            id="dashboard-sign-in-btn"
+            className="btn btn-solid text-xs"
+          >
+            &gt; sign_in
+          </Link>
+          <Link
+            href="/weekly-ctfs/sign-up"
+            id="dashboard-sign-up-btn"
+            className="btn text-xs"
+          >
+            &gt; create_account
+          </Link>
+        </div>
       </div>
     </div>
   );

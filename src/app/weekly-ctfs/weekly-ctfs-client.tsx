@@ -6,7 +6,6 @@ import type { CtfDashboard } from "../../lib/ctf";
 import { WeekHero } from "./_components/week-hero";
 import { ChallengeGrid } from "./_components/challenge-grid";
 import { UserStatsPanel } from "./_components/user-stats-panel";
-import { SignInForm } from "./_components/sign-in-form";
 
 /* ------------------------------------------------------------------ */
 /*  Main dashboard shell                                               */
@@ -70,15 +69,8 @@ export function WeeklyCtfsDashboard({ data }: { data: CtfDashboard }) {
 
               {/* ── Right: sidebar ── */}
               <aside className="flex flex-col gap-4">
-                {/* User stats or sign-in CTA */}
-                {viewer ? (
-                  <UserStatsPanel viewer={viewer} challenges={challenges} />
-                ) : (
-                  <>
-                    <UserStatsPanel viewer={null} challenges={challenges} />
-                    <SignInForm />
-                  </>
-                )}
+                {/* UserStatsPanel shows auth CTA for unauthenticated visitors */}
+                <UserStatsPanel viewer={viewer} challenges={challenges} />
               </aside>
 
             </div>
@@ -122,7 +114,39 @@ function NoActiveWeek({ viewer }: { viewer: CtfDashboard["viewer"] }) {
         {viewer ? (
           <UserStatsPanel viewer={viewer} challenges={[]} />
         ) : (
-          <SignInForm />
+          /* Auth entry points remain available even when no CTF is active */
+          <div className="term" aria-label="Authentication">
+            <div className="term-bar">
+              <span className="term-dot" />
+              <span className="term-dot" />
+              <span className="term-dot" />
+              <span className="text-[0.7rem] text-fg-faint ml-1">{"// access"}</span>
+            </div>
+            <div className="term-body !min-h-0 flex flex-col gap-4">
+              <p className="text-xs text-fg-faint">
+                <span className="prompt">$</span> not authenticated
+              </p>
+              <p className="text-xs text-fg-dim leading-relaxed">
+                Sign in or create an account. Your progress carries over between weeks.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/weekly-ctfs/sign-in"
+                  id="no-week-sign-in-btn"
+                  className="btn btn-solid text-xs"
+                >
+                  &gt; sign_in
+                </Link>
+                <Link
+                  href="/weekly-ctfs/sign-up"
+                  id="no-week-sign-up-btn"
+                  className="btn text-xs"
+                >
+                  &gt; create_account
+                </Link>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

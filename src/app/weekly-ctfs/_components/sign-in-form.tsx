@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { signIn, type AuthState } from "../actions";
 
@@ -7,10 +8,13 @@ const INITIAL: AuthState = { error: null };
 
 /* ------------------------------------------------------------------ */
 /*  Sign-in form                                                        */
+/*  Used both on the dashboard sidebar and the dedicated sign-in page. */
 /* ------------------------------------------------------------------ */
 
-export function SignInForm() {
+export function SignInForm({ errorOverride }: { errorOverride?: string | null }) {
   const [state, action, pending] = useActionState(signIn, INITIAL);
+
+  const visibleError = state.error ?? errorOverride ?? null;
 
   return (
     <div className="term" aria-label="Sign in to CTF">
@@ -24,7 +28,10 @@ export function SignInForm() {
       <form action={action} className="term-body !min-h-0 flex flex-col gap-4">
         {/* Email */}
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="ctf-email" className="text-[0.72rem] text-fg-faint uppercase tracking-widest">
+          <label
+            htmlFor="ctf-email"
+            className="text-[0.72rem] text-fg-faint uppercase tracking-widest"
+          >
             Email
           </label>
           <input
@@ -41,9 +48,21 @@ export function SignInForm() {
 
         {/* Password */}
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="ctf-password" className="text-[0.72rem] text-fg-faint uppercase tracking-widest">
-            Password
-          </label>
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="ctf-password"
+              className="text-[0.72rem] text-fg-faint uppercase tracking-widest"
+            >
+              Password
+            </label>
+            <Link
+              href="/weekly-ctfs/forgot-password"
+              className="text-[0.68rem] text-fg-faint hover:text-accent transition-colors"
+              tabIndex={pending ? -1 : undefined}
+            >
+              forgot_password
+            </Link>
+          </div>
           <input
             id="ctf-password"
             name="password"
@@ -57,12 +76,12 @@ export function SignInForm() {
         </div>
 
         {/* Error */}
-        {state.error && (
+        {visibleError && (
           <p
             role="alert"
             className="text-xs text-danger border border-danger/30 bg-danger/5 px-3 py-2"
           >
-            <span className="text-danger">!</span> {state.error}
+            <span className="text-danger">!</span> {visibleError}
           </p>
         )}
 
@@ -75,6 +94,17 @@ export function SignInForm() {
         >
           {pending ? "> authenticating_" : "> sign_in"}
         </button>
+
+        {/* Create account link */}
+        <p className="text-[0.72rem] text-fg-faint">
+          No account?{" "}
+          <Link
+            href="/weekly-ctfs/sign-up"
+            className="text-accent hover:underline"
+          >
+            create_account →
+          </Link>
+        </p>
       </form>
     </div>
   );
