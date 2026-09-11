@@ -12,6 +12,7 @@
     "ctf:verify-backend": "node --env-file=.env.local scripts/verify-ctf-backend.mjs"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "1.6.1",
     "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.115.0",
     "next": "16.3.4",

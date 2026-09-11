@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import { signUp, type AuthState } from "../actions";
 
 const INITIAL: AuthState = { error: null };
+
+/* ------------------------------------------------------------------ */
+/*  Turnstile site key — undefined when not configured                 */
+/*  Only the public NEXT_PUBLIC_ variable is referenced here.          */
+/* ------------------------------------------------------------------ */
+
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null;
 
 /* ------------------------------------------------------------------ */
 /*  Validation helpers (mirrors ctf-auth.ts patterns, client-side)     */
@@ -20,7 +30,7 @@ function clientValidate(data: FormData): string | null {
   const confirmation = String(data.get("confirmation") ?? "");
 
   if (!USERNAME_RE.test(username)) {
-    return "Use 3–24 lowercase letters, numbers, underscores, or hyphens for your username.";
+    return "Use 3-24 lowercase letters, numbers, underscores, or hyphens for your username.";
   }
   if (!EMAIL_RE.test(email) || email.length > 254) {
     return "Enter a valid email address.";
@@ -39,14 +49,41 @@ function clientValidate(data: FormData): string | null {
 /* ------------------------------------------------------------------ */
 
 export function SignUpForm() {
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
+
   const [state, action, pending] = useActionState(
     async (prev: AuthState, formData: FormData): Promise<AuthState> => {
+      /* 1. Client-side field validation */
       const clientErr = clientValidate(formData);
       if (clientErr) return { error: clientErr };
-      return signUp(prev, formData);
+
+      /* 2. CAPTCHA guard — only when site key is configured */
+      if (TURNSTILE_SITE_KEY && !captchaToken) {
+        return { error: "Complete the verification challenge and try again." };
+      }
+
+      /* 3. Inject captchaToken into FormData so the server action picks it up */
+      if (captchaToken) {
+        formData.set("captchaToken", captchaToken);
+      }
+
+      /* 4. Call real server action */
+      const result = await signUp(prev, formData);
+
+      /* 5. On failure, clear token and reset widget so user can retry */
+      if (result.error) {
+        setCaptchaToken(null);
+        turnstileRef.current?.reset();
+      }
+
+      return result;
     },
     INITIAL,
   );
+
+  /* Submit is disabled while pending OR while CAPTCHA is required but not yet solved */
+  const submitDisabled = pending || (TURNSTILE_SITE_KEY !== null && !captchaToken);
 
   return (
     <div className="term" aria-label="Create a CTF account">
@@ -74,12 +111,12 @@ export function SignUpForm() {
             autoComplete="username"
             placeholder="your_handle"
             pattern="[a-z0-9_\-]{3,24}"
-            title="3–24 lowercase letters, numbers, underscores, or hyphens"
+            title="3-24 lowercase letters, numbers, underscores, or hyphens"
             className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors"
             disabled={pending}
           />
           <span className="text-[0.65rem] text-fg-faint">
-            3–24 lowercase letters, numbers, _ or –. This is your public identity.
+            3-24 lowercase letters, numbers, _ or -. This is your public identity.
           </span>
         </div>
 
@@ -149,6 +186,20 @@ export function SignUpForm() {
           />
         </div>
 
+        {/* Turnstile — only rendered when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set */}
+        {TURNSTILE_SITE_KEY && (
+          <div>
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={TURNSTILE_SITE_KEY}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+              options={{ theme: "dark", size: "normal" }}
+            />
+          </div>
+        )}
+
         {/* Error */}
         {state.error && (
           <p
@@ -162,7 +213,7 @@ export function SignUpForm() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={pending}
+          disabled={submitDisabled}
           id="ctf-sign-up-btn"
           className="btn btn-solid self-start disabled:opacity-50 disabled:cursor-not-allowed"
         >
