@@ -51,7 +51,8 @@ export function ResetPasswordForm() {
 
       <form action={action} className="term-body !min-h-0 flex flex-col gap-4">
         <p className="text-xs text-fg-faint leading-relaxed">
-          Choose a new password for your account. At least 10 characters.
+          Use 10+ characters with lowercase, uppercase, number, and a special
+          character.
         </p>
 
         {/* New password */}
