@@ -182,8 +182,13 @@ function AuthenticatedStats({
         {showPw && (
           <form action={pwAction} className="panel p-4 flex flex-col gap-3">
             <PwField id="ctf-pw-current" name="currentPassword" label="Current password" />
-            <PwField id="ctf-pw-new" name="newPassword" label="New password (≥10 chars)" />
+            <PwField id="ctf-pw-new" name="newPassword" label="New password" />
             <PwField id="ctf-pw-confirm" name="confirmation" label="Confirm new password" />
+
+            <p className="text-[0.65rem] text-fg-faint">
+              Use 10+ characters with lowercase, uppercase, number, and a special
+              character.
+            </p>
 
             {pwState.status === "error" && (
               <p role="alert" className="text-xs text-danger">
