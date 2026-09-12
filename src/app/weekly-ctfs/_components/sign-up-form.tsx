@@ -162,12 +162,12 @@ export function SignUpForm() {
             required
             autoComplete="new-password"
             placeholder="············"
-            minLength={10}
+            minLength={8}
             className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors"
             disabled={pending}
           />
           <span className="text-[0.65rem] text-fg-faint">
-            10+ characters with lowercase, uppercase, number, and special character.
+            8+ characters with at least one letter and one number.
           </span>
         </div>
 
@@ -186,7 +186,7 @@ export function SignUpForm() {
             required
             autoComplete="new-password"
             placeholder="············"
-            minLength={10}
+            minLength={8}
             className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors"
             disabled={pending}
           />
