@@ -186,8 +186,7 @@ function AuthenticatedStats({
             <PwField id="ctf-pw-confirm" name="confirmation" label="Confirm new password" />
 
             <p className="text-[0.65rem] text-fg-faint">
-              Use 10+ characters with lowercase, uppercase, number, and a special
-              character.
+              Use 8+ characters with at least one letter and one number.
             </p>
 
             {pwState.status === "error" && (
