@@ -4,7 +4,9 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  CTF_PASSWORD_REQUIREMENT,
   getSiteUrl,
+  isValidCtfPassword,
   isValidEmail,
   isValidUsername,
   normalizeEmail,
@@ -105,7 +107,9 @@ export async function signUp(
     };
   }
   if (!isValidEmail(email)) return { error: "Enter a valid email address." };
-  if (password.length < 10) return { error: "Use at least 10 characters." };
+  if (!isValidCtfPassword(password)) {
+    return { error: CTF_PASSWORD_REQUIREMENT };
+  }
   if (password !== confirmation) return { error: "The passwords do not match." };
   if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken) {
     return { error: "Complete the verification challenge and try again." };
@@ -164,8 +168,8 @@ export async function resetPassword(
 
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
-  if (password.length < 10) {
-    return { status: "error", message: "Use at least 10 characters." };
+  if (!isValidCtfPassword(password)) {
+    return { status: "error", message: CTF_PASSWORD_REQUIREMENT };
   }
   if (password !== confirmation) {
     return { status: "error", message: "The passwords do not match." };
@@ -211,10 +215,10 @@ export async function changePassword(
   const newPassword = String(formData.get("newPassword") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
 
-  if (newPassword.length < 10) {
+  if (!isValidCtfPassword(newPassword)) {
     return {
       status: "error",
-      message: "Use at least 10 characters.",
+      message: CTF_PASSWORD_REQUIREMENT,
     };
   }
 
