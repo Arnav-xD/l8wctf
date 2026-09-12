@@ -2,7 +2,11 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { recordCtfAudit, requireCtfHost } from "../../../lib/ctf-host";
+import {
+  recordCtfAudit,
+  requireCtfAdmin,
+  requireCtfHost,
+} from "../../../lib/ctf-host";
 
 export type AdminState = {
   status: "idle" | "error" | "success";
@@ -21,6 +25,8 @@ const CATEGORIES = new Set([
   "misc",
 ]);
 const DIFFICULTIES = new Set(["beginner", "easy", "medium", "hard"]);
+const ACCOUNT_ROLES = new Set(["student", "host", "admin"]);
+const ACCOUNT_STATUSES = new Set(["active", "suspended"]);
 
 function success(message: string): AdminState {
   return { status: "success", message };
@@ -108,45 +114,77 @@ export async function createWeek(
   }
 }
 
-export async function updateAccountAccess(
+// Role and status are separate actions, each touching only their own column —
+// two admins working the same user list at once (one changing a role, one
+// suspending someone else) can't have one submit clobber the other's field.
+// Both are admin-only: requireCtfAdmin rejects hosts before any row is read.
+export async function setAccountRole(
   _state: AdminState,
   formData: FormData,
 ): Promise<AdminState> {
   try {
-    const { admin, userId, role: actorRole } = await requireCtfHost();
-    if (actorRole !== "admin") throw new Error("Admin access required.");
-
+    const { admin, userId } = await requireCtfAdmin();
     const accountId = required(formData, "accountId");
     const role = required(formData, "role");
-    const status = required(formData, "status");
-    if (!new Set(["student", "host", "admin"]).has(role)) {
-      throw new Error("Invalid account role.");
-    }
-    if (!new Set(["active", "suspended"]).has(status)) {
-      throw new Error("Invalid account status.");
-    }
+    if (!ACCOUNT_ROLES.has(role)) throw new Error("Invalid account role.");
     if (accountId === userId) {
-      throw new Error("Use another admin account to change your own access.");
+      throw new Error("Use another admin account to change your own role.");
     }
 
     const { error } = await admin
       .from("ctf_profiles")
-      .update({ role, account_status: status })
+      .update({ role })
       .eq("id", accountId);
     if (error) throw error;
 
     await recordCtfAudit(admin, {
       actorId: userId,
-      action: "account.access_updated",
+      action: "account.role_changed",
       entityType: "account",
       entityId: accountId,
-      details: { role, status },
+      details: { role },
     });
     revalidatePath("/weekly-ctfs/admin");
     revalidatePath("/weekly-ctfs");
-    return success("Account access updated.");
+    return success("Role updated.");
   } catch (error) {
-    return failure(error, "Could not update account access.");
+    return failure(error, "Could not change the account role.");
+  }
+}
+
+export async function setAccountStatus(
+  _state: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  try {
+    const { admin, userId } = await requireCtfAdmin();
+    const accountId = required(formData, "accountId");
+    const status = required(formData, "status");
+    if (!ACCOUNT_STATUSES.has(status)) throw new Error("Invalid account status.");
+    if (accountId === userId) {
+      throw new Error("Use another admin account to change your own status.");
+    }
+
+    const { error } = await admin
+      .from("ctf_profiles")
+      .update({ account_status: status })
+      .eq("id", accountId);
+    if (error) throw error;
+
+    await recordCtfAudit(admin, {
+      actorId: userId,
+      action: status === "suspended" ? "account.suspended" : "account.reactivated",
+      entityType: "account",
+      entityId: accountId,
+      details: { status },
+    });
+    revalidatePath("/weekly-ctfs/admin");
+    revalidatePath("/weekly-ctfs");
+    return success(
+      status === "suspended" ? "Account suspended." : "Account reactivated.",
+    );
+  } catch (error) {
+    return failure(error, "Could not change the account status.");
   }
 }
 

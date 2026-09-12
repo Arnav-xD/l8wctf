@@ -90,6 +90,18 @@ export default async function CtfAdminPage() {
                   weeks={data.weeks}
                   challenges={data.challenges}
                   now={data.loadedAt}
+                  canManageAccounts={data.canManageAccounts}
+                  currentUserId={data.currentUserId}
+                  // Email never leaves the server — the panel only needs
+                  // username, role, status and join date.
+                  accounts={data.accounts.map((account) => ({
+                    id: account.id,
+                    username: account.username,
+                    displayName: account.displayName,
+                    role: account.role,
+                    status: account.status,
+                    createdAt: account.createdAt,
+                  }))}
                 />
               ) : null}
             </div>

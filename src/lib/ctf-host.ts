@@ -33,6 +33,14 @@ export async function requireCtfHost() {
   };
 }
 
+// Account management (role changes, suspend/reactivate) is admin-only — a
+// host running weekly operations never sees or reaches these actions.
+export async function requireCtfAdmin() {
+  const session = await requireCtfHost();
+  if (session.role !== "admin") throw new Error("Admin access required.");
+  return session as typeof session & { role: "admin" };
+}
+
 export async function recordCtfAudit(
   admin: ReturnType<typeof createAdminClient>,
   entry: {

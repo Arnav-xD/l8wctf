@@ -39,7 +39,7 @@ export type CtfAdminAccount = {
 };
 
 export async function loadCtfAdminData() {
-  const { admin, role } = await requireCtfHost();
+  const { admin, role, userId } = await requireCtfHost();
   const [weeksResult, challengesResult, profilesResult, usersResult] = await Promise.all([
     admin
       .from("ctf_weeks")
@@ -73,6 +73,7 @@ export async function loadCtfAdminData() {
 
   return {
     role,
+    currentUserId: userId,
     canManageAccounts: role === "admin",
     accounts: (profilesResult.data ?? []).map((profile): CtfAdminAccount => {
       const authUser = authUsers.get(profile.id);
