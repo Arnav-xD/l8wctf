@@ -1,10 +1,7 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN = /^[a-z0-9_-]{3,24}$/;
-const PASSWORD_SPECIAL_CHARACTERS =
-  "!@#$%^&*()_+-=[]{};':\"\\|,.<>/?`~";
-
 export const CTF_PASSWORD_REQUIREMENT =
-  "Use at least 10 characters with a lowercase letter, uppercase letter, number, and special character.";
+  "Use at least 8 characters with at least one letter and one number.";
 
 export function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -25,13 +22,9 @@ export function isValidUsername(value: string) {
 
 export function isValidCtfPassword(value: string) {
   return (
-    value.length >= 10 &&
-    /[a-z]/.test(value) &&
-    /[A-Z]/.test(value) &&
-    /[0-9]/.test(value) &&
-    [...value].some((character) =>
-      PASSWORD_SPECIAL_CHARACTERS.includes(character),
-    )
+    value.length >= 8 &&
+    /[A-Za-z]/.test(value) &&
+    /[0-9]/.test(value)
   );
 }
 
