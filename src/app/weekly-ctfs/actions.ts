@@ -45,7 +45,7 @@ export async function signIn(
   const password = String(formData.get("password") ?? "");
   const next = safeAuthRedirect(formData.get("next"));
 
-  if (!isValidEmail(email) || password.length < 10) {
+  if (!isValidEmail(email) || password.length < 8) {
     return {
       error: "Enter a valid email and password.",
     };
