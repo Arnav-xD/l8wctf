@@ -51,8 +51,7 @@ export function ResetPasswordForm() {
 
       <form action={action} className="term-body !min-h-0 flex flex-col gap-4">
         <p className="text-xs text-fg-faint leading-relaxed">
-          Use 10+ characters with lowercase, uppercase, number, and a special
-          character.
+          Use 8+ characters with at least one letter and one number.
         </p>
 
         {/* New password */}
@@ -70,7 +69,7 @@ export function ResetPasswordForm() {
             required
             autoComplete="new-password"
             placeholder="············"
-            minLength={10}
+            minLength={8}
             className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors"
             disabled={pending}
           />
@@ -91,7 +90,7 @@ export function ResetPasswordForm() {
             required
             autoComplete="new-password"
             placeholder="············"
-            minLength={10}
+            minLength={8}
             className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors"
             disabled={pending}
           />
