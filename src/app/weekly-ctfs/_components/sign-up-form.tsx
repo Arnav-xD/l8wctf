@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
+import {
+  CTF_PASSWORD_REQUIREMENT,
+  isValidCtfPassword,
+} from "../../../lib/ctf-auth";
 import { signUp, type AuthState } from "../actions";
 
 const INITIAL: AuthState = { error: null };
@@ -35,8 +39,8 @@ function clientValidate(data: FormData): string | null {
   if (!EMAIL_RE.test(email) || email.length > 254) {
     return "Enter a valid email address.";
   }
-  if (password.length < 10) {
-    return "Use at least 10 characters for your password.";
+  if (!isValidCtfPassword(password)) {
+    return CTF_PASSWORD_REQUIREMENT;
   }
   if (password !== confirmation) {
     return "The passwords do not match.";
@@ -162,7 +166,9 @@ export function SignUpForm() {
             className="bg-bg-3 border border-border px-3 py-2 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-accent transition-colors"
             disabled={pending}
           />
-          <span className="text-[0.65rem] text-fg-faint">At least 10 characters.</span>
+          <span className="text-[0.65rem] text-fg-faint">
+            10+ characters with lowercase, uppercase, number, and special character.
+          </span>
         </div>
 
         {/* Confirm password */}
