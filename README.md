@@ -1,52 +1,92 @@
-# Layer8 — front page
+# Layer8 — Website & Weekly CTF
 
-Site for **Layer8**, the cybersecurity club at PES University, Electronic City
-Campus. Next.js 16 (App Router, Turbopack) + Tailwind v4 + TypeScript.
+The expanded **Layer8 cybersecurity club website**, with learning content, recruitment tools, and a weekly capture-the-flag platform.
+
+Built with **Next.js 16, React 19, TypeScript, and Tailwind CSS v4**. Weekly CTF features use **Supabase** for authentication, PostgreSQL, and private challenge-file storage.
+
+This repository is a fork of [AmoghGarg007/l8demo](https://github.com/AmoghGarg007/l8demo). Its configured demo URL is [l8demo.vercel.app](https://l8demo.vercel.app).
+
+## Explore the site
+
+| Route | Contents |
+| --- | --- |
+| `/` | Landing page, interactive terminal, domains, and weekly-CTF strip |
+| `/blogs` and `/blogs/[slug]` | Markdown blog posts |
+| `/ctf-writeups` and `/ctf-writeups/[slug]` | Challenge writeups |
+| `/events` | Searchable event catalog |
+| `/domains` | Security-domain cards and details |
+| `/resources` | Learning paths and resource library |
+| `/about` | Club information, core team, and member rosters |
+| `/core` | Redirect to `/about` |
+| `/legacy` and `/hall-of-fame` | Alumni and achievements |
+| `/sandbox` | Coming-soon page |
+| `/recruitments` and `/admin` | Recruitment and administration interfaces |
+| `/weekly-ctfs` | Weekly operations and challenge listings |
+| `/weekly-ctfs/[challenge]` | Challenge details and flag submissions |
+| `/weekly-ctfs/leaderboard` | Rankings |
+| `/weekly-ctfs/admin` | Host/admin challenge management |
+
+The shared terminal supports `help`, `ls`, `cd <section>`, `pwd`, `whoami`, `cat mission.txt`, `clear`, command history, and tab completion.
+
+## Run locally
+
+From the repository directory:
 
 ```bash
-npm run dev     # http://localhost:3000
-npm run lint
-npm run build
-npm run start
+npm ci
 ```
 
-## What's here
+Copy [.env.example](.env.example) to `.env.local` and configure the services needed for the features you are running:
 
-Every route is a server `page.tsx` (holds `export const metadata`) plus a
-`"use client"` `*-client.tsx` that renders it, sharing `Header`/`Footer` from
-`src/app/_components/site-chrome.tsx`. `NAV`/`ROUTES` there is what turns a nav
-label into a real link — everything in `NAV` without a `ROUTES` entry still
-renders as a plain (non-navigating) button.
+| Feature | Configuration |
+| --- | --- |
+| Recruitment/admin | Turso database URL and token, JWT secret, and admin SRNs |
+| Optional Google Sheets sync | Service-account email, private key, and sheet ID |
+| Weekly CTF | Supabase URL, publishable key, server-only service-role key, and site URL |
+| CTF CAPTCHA | Turnstile site key after enabling CAPTCHA in Supabase |
 
-| Route | What it is |
-|---|---|
-| `/` | Landing — hero with the interactive terminal, domains grid, weekly-CTF strip |
-| `/blogs`, `/blogs/[slug]` | Writeups. Post metadata in `blogs/blogs.ts`, bodies are Markdown in `src/content/blogs/*.md` rendered by the dependency-free parser in `src/lib/markdown.ts` |
-| `/events` | Searchable CTF/workshop/seminar catalog. Data in `events/events-data.ts` |
-| `/domains` | The 8 security domains (web, pwn, rev, crypto, forensics, stego, osint, network) — card grid + dossier. Data in `domains/domains-data.ts` |
-| `/resources` | Curated learning path + resource library |
-| `/sandbox` | "Coming soon" — decrypt-style scramble text |
-| `/about` | Who Layer8 is, the core team, and a domain-rosters grid → `/about/[domain]` |
-| `/about/[domain]` | One domain's head/vice-head + full member roster. Data in `about/about-data.ts`; `generateStaticParams` covers all four domains |
-| `/core` | Redirects to `/about` (keeps old links working) |
+For the CTF backend, follow [docs/WEEKLY_CTF.md](docs/WEEKLY_CTF.md). It covers migration order, email confirmation, SMTP, redirects, CAPTCHA, account provisioning, storage, and backend verification.
 
-`src/app/_components/interactive-terminal.tsx` is the shared CLI (`help`,
-`ls`, `cd <section>`, `pwd`, `whoami`, `cat mission.txt`, `clear`, arrow-key
-history, tab-complete). Each page passes it a `script`/`hint`/`barLabel` so the
-intro text stays page-accurate while the commands work everywhere.
+```bash
+npm run dev
+```
 
-`src/app/globals.css` is the single theme (see `DESIGN.md` for the full design
-system: tokens, type scale, component classes, motion rules — read that before
-adding a page). `src/app/template.tsx` replays a small enter animation and
-resets scroll to top on every navigation.
+Open [localhost:3000](http://localhost:3000).
 
-## Deploy
+| Command | Purpose |
+| --- | --- |
+| `npm run lint` | ESLint |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run ctf:verify-backend` | Verify the configured CTF backend |
 
-Two independent repos/Vercel projects share this codebase — see the
-`two-repos-two-vercel-projects` project memory for which is which. This repo
-deploys via `.github/workflows/deploy.yml` on every push to `main` (Vercel's
-native Git integration can't be used — Hobby plan can't link an org-owned
-private repo to two projects). It runs `vercel build` + `vercel deploy
---prebuilt` with a `VERCEL_TOKEN` repo secret; `VERCEL_ORG_ID` /
-`VERCEL_PROJECT_ID` in the workflow are not secrets. Don't push directly with
-`vercel deploy --prod` — it bypasses the Actions build/lint step.
+## How the project is organized
+
+| Location | Role |
+| --- | --- |
+| [src/app/](src/app/) | App Router pages and client interfaces |
+| [src/app/_components/](src/app/_components/) | Shared navigation, terminal, and authentication components |
+| [src/content/](src/content/) | Markdown blogs and CTF writeups |
+| [src/lib/markdown.ts](src/lib/markdown.ts) | Dependency-free Markdown rendering |
+| [src/app/weekly-ctfs/actions.ts](src/app/weekly-ctfs/actions.ts) | Student authentication and submission actions |
+| [src/app/weekly-ctfs/admin/actions.ts](src/app/weekly-ctfs/admin/actions.ts) | Host/admin mutations |
+| [src/lib/ctf.ts](src/lib/ctf.ts) and [src/lib/ctf-admin.ts](src/lib/ctf-admin.ts) | CTF data loading |
+| [src/lib/supabase/](src/lib/supabase/) | Browser/server Supabase clients |
+| [supabase/migrations/](supabase/migrations/) | Database schema and CTF backend migrations |
+| [scripts/](scripts/) | CTF provisioning, password reset, and verification |
+| [DESIGN.md](DESIGN.md) | Design system |
+| [docs/WEEKLY_CTF.md](docs/WEEKLY_CTF.md) | Detailed CTF setup and operating guide |
+
+Page interfaces share the header/footer and navigation map in `site-chrome.tsx`. Content catalogs use their route-specific data files. `globals.css` defines the theme; `template.tsx` handles page-entry motion and scroll reset.
+
+## Understanding flag submissions
+
+The existing backend hashes submitted flags, validates submissions on the server, and performs rate limiting, scoring, and solve creation atomically in PostgreSQL. Challenge secrets are separated from public metadata. Host/admin actions check stored roles and record audit logs.
+
+See [docs/WEEKLY_CTF.md](docs/WEEKLY_CTF.md) for the security decisions, scoring rules, storage limits, and UI integration contracts. Keep the service-role key server-only.
+
+## Deployment
+
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml) deploys pushes to `main` through the Vercel CLI. It pulls production settings, builds, and deploys prebuilt output using the `VERCEL_TOKEN` repository secret and the committed Vercel project IDs.
+
+Use that workflow for this repository's production deployment. Direct `vercel deploy --prod` bypasses it. The committed workflow has build and deploy steps; lint is a separate npm command.
